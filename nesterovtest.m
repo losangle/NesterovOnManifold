@@ -1,8 +1,9 @@
-function [finalX, info, xk, yk] = nesterov(problem, xCur, options)
+function [finalX, info, xk, yk] = nesterovtest(problem, xCur, options)
     localdefaults.maxiter = 2000;
     localdefaults.tolgradnorm =  1e-6;
     localdefaults.alpha = 0.02; % < 1/L
     localdefaults.minstepsize = 1e-10;
+    localdefaults.linesearch = @linesearch;
     
     % Merge global and local defaults, then merge w/ user options, if any.
     localdefaults = mergeOptions(getGlobalDefaults(), localdefaults);
@@ -40,8 +41,6 @@ function [finalX, info, xk, yk] = nesterov(problem, xCur, options)
     
     
     while(1)
-        
-        timetic = tic();
         curIter = iter + 1;
         % Run standard stopping criterion checks
         [stop, reason] = stoppingcriterion(problem, xCur, options, ...
@@ -62,7 +61,15 @@ function [finalX, info, xk, yk] = nesterov(problem, xCur, options)
             break;
         end
         
-        yNext = M.exp(xCur, xCurGradient, -options.alpha);
+                % Pick the descent direction as minus the gradient
+        desc_dir = problem.M.lincomb(xCur, -1, xCurGradient);
+        
+        % Execute the line search
+        [stepsize, newx, newkey, lsstats] = options.linesearch( ...
+                             problem, xCur, desc_dir, xCurCost, -xCurGradNorm^2, ...
+                             options, storedb, key);
+        
+        yNext = M.exp(xCur, desc_dir, min(options.alpha, stepsize/xCurGradNorm));
         xNext = M.exp(yNext, M.log(yNext, yk{curIter}), -(curIter-1)/(curIter+2));
         yk{curIter + 1} = yNext;
         xk{curIter + 1} = xNext;

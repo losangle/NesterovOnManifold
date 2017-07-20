@@ -7,19 +7,19 @@ function clientNest
 %     cost = @(x) (1-x(2))^2+w*abs(x(2)-x(1)^2);
 %     grad = @(x) [sign(x(2)-x(1)^2)*w*(-2*x(1)); sign(x(2)-x(1)^2)*w-2*(1-x(2))];
 
-    %Raleigh Quotient
-%     n = 10;
-%     manifold = spherefactory(n);
-%     A = randn(n);
-%     A = .5*(A+A.');
-%     cost = @(x) -x'*(A*x);
-%     grad = @(x) -2*A*x;
+%     Raleigh Quotient
+    n = 1000;
+    manifold = spherefactory(n);
+    A = randn(n);
+    A = .5*(A+A.');
+    cost = @(x) -x'*(A*x);
+    grad = @(x) -2*A*x;
 
-    % Rosenbrog
-    dim = 2;
-    cost = @(x) (1-x(1))^2+10*(x(2)-x(1)^2)^2;
-    grad = @(x) [-2*(1-x(1))+20*(x(2)-x(1)^2)*(-2*x(1));20*(x(2)-x(1)^2)];
-    manifold =  euclideanfactory(dim);
+%     Rosenbrog
+%     dim = 2;
+%     cost = @(x) (1-x(1))^2+5*(x(2)-x(1)^2)^2;
+%     grad = @(x) [-2*(1-x(1))+10*(x(2)-x(1)^2)*(-2*x(1));10*(x(2)-x(1)^2)];
+%     manifold =  euclideanfactory(dim);
     
     
     problem.M = manifold;
@@ -61,7 +61,7 @@ function clientNest
         xlabel('Iter');
         ylabel('GradNorms');
         
-        titletest = sprintf('Time: %f', stats.time);
+        titletest = sprintf('Time: %f', stats(end).time);
         title(titletest);
         
         subplot(2,2,3)
