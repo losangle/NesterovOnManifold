@@ -40,6 +40,8 @@ function [finalX, info, xk, yk] = nesterov(problem, xCur, options)
     
     
     while(1)
+        
+        timetic = tic();
         curIter = iter + 1;
         % Run standard stopping criterion checks
         [stop, reason] = stoppingcriterion(problem, xCur, options, ...

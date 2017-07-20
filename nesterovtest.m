@@ -1,7 +1,9 @@
-function [finalX, info] = nesterov(problem, xCur, options)
-    localdefaults.maxiter = 1000;
+function [finalX, info, xk, yk] = nesterovtest(problem, xCur, options)
+    localdefaults.maxiter = 2000;
     localdefaults.tolgradnorm =  1e-6;
-    localdefaults.alpha = 1; % < 1/L
+    localdefaults.alpha = 0.02; % < 1/L
+    localdefaults.minstepsize = 1e-10;
+    localdefaults.linesearch = @linesearch;
     
     % Merge global and local defaults, then merge w/ user options, if any.
     localdefaults = mergeOptions(getGlobalDefaults(), localdefaults);
@@ -10,22 +12,32 @@ function [finalX, info] = nesterov(problem, xCur, options)
     end
     options = mergeOptions(localdefaults, options);
     
-    xk = cell(1, options.maxiter);
-    yk = cell(1, options.maxiter);
-    info = cell(1, options.maxiter);
     M = problem.M;
     
+    if ~exist('xCur','var')|| isempty(xCur)
+        xCur = M.rand(); 
+    end
+    
+    
+    xk = cell(1, options.maxiter);
+    yk = cell(1, options.maxiter);
+    
+    
+    timetic = tic();
+    
     iter = 0;
-    xk(1) = xCur;
-    yk(1) = xCur;
+    xk{1} = xCur;
+    yk{1} = xCur;
     stepsize = 1;
     storedb = StoreDB(options.storedepth);
     key = storedb.getNewKey();
     xCurCost = getCost(problem, xCur);
     xCurGradient = getGradient(problem, xCur);
     xCurGradNorm = M.norm(xCur, xCurGradient);
+    
     stats = savestats();
     info(1) = stats;
+    info(min(10000, options.maxiter+1)).iter = [];
     
     
     while(1)
@@ -49,25 +61,38 @@ function [finalX, info] = nesterov(problem, xCur, options)
             break;
         end
         
-        yk(curIter + 1) = M.exp(xk(curIter), xCurGradient, options.alpha);
-        xk(curIter + 1) = M.exp(yk(curIter+1), M.log(yk(curIter+1), yk(curIter)),(curIter-1)/(curIter+2))
+                % Pick the descent direction as minus the gradient
+        desc_dir = problem.M.lincomb(xCur, -1, xCurGradient);
         
-        xCur = xk(curIter+1);
-        xCurGradient = getGradient(problem, xk(curIter+1));
-        xCurCost = getCost(problem, xk(curIter+1));
-        stepsize = M.dist(xk(curIter+1), xk(curIter));
+        % Execute the line search
+        [stepsize, newx, newkey, lsstats] = options.linesearch( ...
+                             problem, xCur, desc_dir, xCurCost, -xCurGradNorm^2, ...
+                             options, storedb, key);
         
-        key = newkey;
+        yNext = M.exp(xCur, desc_dir, min(options.alpha, stepsize/xCurGradNorm));
+        xNext = M.exp(yNext, M.log(yNext, yk{curIter}), -(curIter-1)/(curIter+2));
+        yk{curIter + 1} = yNext;
+        xk{curIter + 1} = xNext;
+        
+        key = storedb.getNewKey();
+        stepsize = M.dist(xNext, xCur);
+        xCur = xNext;
+        xCurGradient = getGradient(problem, xCur, storedb, key);
+        xCurCost = getCost(problem, xCur);
+        xCurGradNorm = M.norm(xCur, xCurGradient);
         
         iter = iter +1;
         stats = savestats();
         info(iter+1) = stats; 
     end
     
-    info = info(1, 1:iter+1);
+    info = info(1:iter+1);
+    xk = xk(1, 1:iter+1);
+    yk = yk(1, 1:iter+1);
+    
     finalX = xCur;
     
-    
+
     function stats = savestats()
         stats.iter = iter;
         stats.cost = xCurCost;
@@ -83,3 +108,4 @@ function [finalX, info] = nesterov(problem, xCur, options)
         stats = applyStatsfun(problem, xCur, storedb, key, options, stats);
     end
 end
+
