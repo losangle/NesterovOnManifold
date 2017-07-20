@@ -1,5 +1,5 @@
 function [finalX, info, xk, yk] = nesterov(problem, xCur, options)
-    localdefaults.maxiter = 1000;
+    localdefaults.maxiter = 2000;
     localdefaults.tolgradnorm =  1e-6;
     localdefaults.alpha = 0.02; % < 1/L
     localdefaults.minstepsize = 1e-10;
@@ -11,9 +11,16 @@ function [finalX, info, xk, yk] = nesterov(problem, xCur, options)
     end
     options = mergeOptions(localdefaults, options);
     
+    M = problem.M;
+    
+    if ~exist('xCur','var')|| isempty(xCur)
+        xCur = M.rand(); 
+    end
+    
+    
     xk = cell(1, options.maxiter);
     yk = cell(1, options.maxiter);
-    M = problem.M;
+    
     
     timetic = tic();
     
