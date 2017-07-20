@@ -11,7 +11,6 @@ function clientNest
     xCur = problem.M.rand();
     options = [];
     [finalX, stats, xk, yk] = nesterov(problem, xCur, options);
-    finalX
     displaystats(stats);
     
     
